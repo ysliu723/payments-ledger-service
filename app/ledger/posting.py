@@ -43,7 +43,25 @@ def post_entry(session: Session, request: EntryRequest, user: str) -> JournalEnt
 
 
 def load_accounts(session: Session, numbers: set[str]) -> dict[str, Account]:
-    query = select(Account).where(Account.number.in_(numbers))
+    """Load the accounts and lock them until this transaction ends.
+
+    Without the lock, two withdrawals can both read a balance of 100, both
+    pass the check, and both subtract: an overdraft, and one lost update.
+    With it (SELECT ... FOR UPDATE), the second waits until the first has
+    committed, then reads the new balance.
+
+    Locks are always taken in the same order (by id). Otherwise a transfer
+    A -> B and a transfer B -> A could each hold one lock and wait forever
+    for the other: a deadlock.
+    """
+    query = (
+        select(Account)
+        .where(Account.number.in_(numbers))
+        .order_by(Account.id)
+        .with_for_update()
+        # Re-read the row even if this session already loaded it, so we use the locked value.
+        .execution_options(populate_existing=True)
+    )
     accounts = {account.number: account for account in session.scalars(query)}
     missing = sorted(numbers - accounts.keys())
     if missing:
