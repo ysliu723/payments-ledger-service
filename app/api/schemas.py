@@ -82,3 +82,28 @@ class PeriodOut(ApiModel):
     status: str
     closed_by: str | None
     closed_at: datetime | None
+
+
+class TrialBalanceLineOut(BaseModel):
+    account_number: str
+    account_name: str
+    account_type: str
+    balance: Decimal  # debit-positive
+
+
+class TrialBalanceOut(BaseModel):
+    as_of: date
+    accounts: list[TrialBalanceLineOut]
+    total_debit: Decimal
+    total_credit: Decimal
+
+
+class CheckOut(BaseModel):
+    name: str
+    passed: bool
+    detail: str
+
+
+class ReconciliationOut(BaseModel):
+    ok: bool
+    checks: list[CheckOut]

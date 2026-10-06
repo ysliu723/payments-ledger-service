@@ -14,6 +14,8 @@ class Settings:
     events_topic: str = os.environ.get("EVENTS_TOPIC", "ledger.entries")
     # Manual entries above this amount wait for a second person's approval.
     approval_threshold: Decimal = Decimal(os.environ.get("APPROVAL_THRESHOLD", "10000"))
+    # Exports show times in the company's own time zone: "late at night" means late there.
+    company_timezone: str = os.environ.get("COMPANY_TIMEZONE", "America/Los_Angeles")
 
 
 settings = Settings()

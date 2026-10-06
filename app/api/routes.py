@@ -13,14 +13,32 @@ this demo has no real authentication.
     POST /entries/{id}/reverse          reverse a posted entry
     POST /periods/{period}/close        close a month
     GET  /periods                       periods and their status
+    GET  /trial-balance?as_of=          every account's balance on a date
+    GET  /reconciliation                the checks an auditor would run; all must pass
+    GET  /exports/gl-detail.csv         posted entries in the risk platform's format
+    GET  /exports/trial-balance.csv     opening and closing balances for its rollforward
 """
 
+from datetime import date
+
 from fastapi import APIRouter, Depends, Header, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.schemas import AccountIn, AccountOut, EntryIn, EntryOut, LineOut, PeriodOut, ReverseIn
+from app.api.schemas import (
+    AccountIn,
+    AccountOut,
+    CheckOut,
+    EntryIn,
+    EntryOut,
+    LineOut,
+    PeriodOut,
+    ReconciliationOut,
+    ReverseIn,
+    TrialBalanceLineOut,
+    TrialBalanceOut,
+)
 from app.db.models import Account, JournalEntry, Period
 from app.db.session import get_session
 from app.ledger.accounts import get_account, open_account
@@ -29,6 +47,7 @@ from app.ledger.errors import EntryNotFound
 from app.ledger.idempotency import fingerprint, run_once
 from app.ledger.periods import close_period
 from app.ledger.posting import post_entry
+from app.ledger.reports import gl_detail_csv, reconcile, trial_balance, trial_balance_csv
 from app.ledger.review import approve_entry, reject_entry, reverse_entry
 
 router = APIRouter()
@@ -124,6 +143,36 @@ def close(period: str, user: str = User, session: Session = Depends(get_session)
 @router.get("/periods", response_model=list[PeriodOut])
 def list_periods(session: Session = Depends(get_session)):
     return list(session.scalars(select(Period).order_by(Period.period)))
+
+
+@router.get("/trial-balance", response_model=TrialBalanceOut)
+def read_trial_balance(as_of: date | None = None, session: Session = Depends(get_session)):
+    as_of = as_of or date.today()
+    rows = trial_balance(session, as_of)
+    return TrialBalanceOut(
+        as_of=as_of,
+        accounts=[TrialBalanceLineOut(**row.__dict__) for row in rows],
+        total_debit=sum((row.balance for row in rows if row.balance > 0), start=0),
+        total_credit=-sum((row.balance for row in rows if row.balance < 0), start=0),
+    )
+
+
+@router.get("/reconciliation", response_model=ReconciliationOut)
+def read_reconciliation(session: Session = Depends(get_session)):
+    checks = reconcile(session)
+    return ReconciliationOut(
+        ok=all(check.passed for check in checks), checks=[CheckOut(**check.__dict__) for check in checks]
+    )
+
+
+@router.get("/exports/gl-detail.csv")
+def export_gl_detail(start: date, end: date, session: Session = Depends(get_session)):
+    return Response(gl_detail_csv(session, start, end), media_type="text/csv")
+
+
+@router.get("/exports/trial-balance.csv")
+def export_trial_balance(start: date, end: date, session: Session = Depends(get_session)):
+    return Response(trial_balance_csv(session, start, end), media_type="text/csv")
 
 
 def _idempotent(session: Session, user: str, key: str, path: str, body: dict, write) -> JSONResponse:
