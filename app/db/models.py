@@ -1,7 +1,8 @@
 """Database tables.
 
     accounts ── journal_lines ── journal_entries
-    periods      (which months are closed)
+    periods            which months are closed
+    idempotency_keys   the first response to each idempotency key
 
 Balances are debit-positive (debits - credits), the same convention as the
 risk platform. The `balance` column on accounts is a running total kept for
@@ -24,6 +25,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 Money = Numeric(18, 2)
@@ -122,3 +124,16 @@ class JournalLine(Base):
     credit: Mapped[Decimal] = mapped_column(Money, default=Decimal("0"))
 
     account: Mapped[Account] = relationship()
+
+
+class IdempotencyRecord(Base):
+    """The response to the first request made with a key, replayed for any retry with that key."""
+
+    __tablename__ = "idempotency_keys"
+
+    key: Mapped[str] = mapped_column(String(255), primary_key=True)
+    request_hash: Mapped[str] = mapped_column(String(64))
+    # Filled in the same transaction as the insert, so a committed row always has them.
+    response_status: Mapped[int | None]
+    response_body: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

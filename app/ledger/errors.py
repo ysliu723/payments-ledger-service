@@ -22,3 +22,8 @@ class AccountExists(LedgerError):
 
 class InsufficientFunds(LedgerError):
     code = "INSUFFICIENT_FUNDS"
+
+
+class IdempotencyKeyReused(LedgerError):
+    status = 409
+    code = "IDEMPOTENCY_KEY_REUSED"
