@@ -1,0 +1,19 @@
+"""Settings, read from environment variables so Docker and CI can change them."""
+
+import os
+from dataclasses import dataclass
+from decimal import Decimal
+
+
+@dataclass(frozen=True)
+class Settings:
+    database_url: str = os.environ.get(
+        "DATABASE_URL", "postgresql+psycopg://ledger:ledger@localhost:5433/ledger"
+    )
+    kafka_bootstrap: str = os.environ.get("KAFKA_BOOTSTRAP", "localhost:19092")
+    events_topic: str = os.environ.get("EVENTS_TOPIC", "ledger.entries")
+    # Manual entries above this amount wait for a second person's approval.
+    approval_threshold: Decimal = Decimal(os.environ.get("APPROVAL_THRESHOLD", "10000"))
+
+
+settings = Settings()
