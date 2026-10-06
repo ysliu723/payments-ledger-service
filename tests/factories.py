@@ -41,8 +41,10 @@ def deposit(wallet, amount, **kwargs):
     return entry(("1000", amount, "0"), (wallet, "0", amount), description=f"Deposit to {wallet}", **kwargs)
 
 
-def transfer(source, target, amount, **kwargs):
-    return entry((source, amount, "0"), (target, "0", amount), description=f"Transfer {source} -> {target}", **kwargs)
+def transfer(from_wallet, to_wallet, amount, **kwargs):
+    return entry(
+        (from_wallet, amount, "0"), (to_wallet, "0", amount), description=f"Transfer {from_wallet} -> {to_wallet}", **kwargs
+    )
 
 
 def withdraw(wallet, amount, **kwargs):

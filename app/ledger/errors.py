@@ -36,3 +36,13 @@ class PeriodClosed(LedgerError):
 class InvalidState(LedgerError):
     status = 409
     code = "INVALID_STATE"
+
+
+class EntryNotFound(LedgerError):
+    status = 404
+    code = "ENTRY_NOT_FOUND"
+
+
+class SegregationOfDuties(LedgerError):
+    status = 403
+    code = "SEGREGATION_OF_DUTIES"

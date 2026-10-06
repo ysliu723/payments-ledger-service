@@ -102,6 +102,8 @@ class JournalEntry(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     approved_by: Mapped[str | None] = mapped_column(String(64))
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rejected_by: Mapped[str | None] = mapped_column(String(64))
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Corrections are new entries that reverse an old one; each entry can be reversed once.
     reverses_entry_id: Mapped[int | None] = mapped_column(ForeignKey("journal_entries.id"), unique=True)
 
