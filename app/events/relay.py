@@ -53,9 +53,11 @@ def run_forever(session_factory: sessionmaker[Session], publish: Publisher, idle
 
 if __name__ == "__main__":
     from app.config import settings
-    from app.db.session import SessionLocal
+    from app.db.schema import create_schema
+    from app.db.session import SessionLocal, engine
     from app.events.kafka import KafkaPublisher, ensure_topic
 
+    create_schema(engine)  # whichever service starts first creates the tables
     ensure_topic(settings.kafka_bootstrap, settings.events_topic)
     print(f"relay: outbox -> {settings.events_topic} on {settings.kafka_bootstrap}", flush=True)
     run_forever(SessionLocal, KafkaPublisher(settings.kafka_bootstrap, settings.events_topic))

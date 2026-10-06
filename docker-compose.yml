@@ -1,4 +1,29 @@
+# The API, the relay, and the consumer are the same image with different commands.
+x-app: &app
+  build: .
+  environment:
+    DATABASE_URL: postgresql+psycopg://ledger:ledger@db:5432/ledger
+    KAFKA_BOOTSTRAP: redpanda:9092
+  depends_on:
+    db:
+      condition: service_healthy
+    redpanda:
+      condition: service_healthy
+
 services:
+  api:
+    <<: *app
+    ports:
+      - "8001:8000"  # 8001 on this machine, so it can run next to the risk platform's API
+
+  relay:
+    <<: *app
+    command: ["python", "-m", "app.events.relay"]
+
+  consumer:
+    <<: *app
+    command: ["python", "-m", "app.events.consumer"]
+
   db:
     image: postgres:17
     environment:

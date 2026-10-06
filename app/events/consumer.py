@@ -63,9 +63,11 @@ def run_forever(session_factory: sessionmaker[Session], consumer) -> None:
 
 if __name__ == "__main__":
     from app.config import settings
-    from app.db.session import SessionLocal
+    from app.db.schema import create_schema
+    from app.db.session import SessionLocal, engine
     from app.events.kafka import ensure_topic, make_consumer
 
+    create_schema(engine)  # whichever service starts first creates the tables
     ensure_topic(settings.kafka_bootstrap, settings.events_topic)
     print(f"consumer: {settings.events_topic} -> statements", flush=True)
     run_forever(SessionLocal, make_consumer(settings.kafka_bootstrap, settings.events_topic, "statements"))
