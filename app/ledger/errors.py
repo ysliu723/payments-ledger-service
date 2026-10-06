@@ -27,3 +27,12 @@ class InsufficientFunds(LedgerError):
 class IdempotencyKeyReused(LedgerError):
     status = 409
     code = "IDEMPOTENCY_KEY_REUSED"
+
+
+class PeriodClosed(LedgerError):
+    code = "PERIOD_CLOSED"
+
+
+class InvalidState(LedgerError):
+    status = 409
+    code = "INVALID_STATE"

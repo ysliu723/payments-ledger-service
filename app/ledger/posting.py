@@ -12,10 +12,12 @@ from sqlalchemy.orm import Session
 from app.db.models import Account, EntryStatus, JournalEntry, JournalLine
 from app.ledger.entries import EntryRequest, validate
 from app.ledger.errors import AccountNotFound, InsufficientFunds, InvalidEntry
+from app.ledger.periods import ensure_open
 
 
 def post_entry(session: Session, request: EntryRequest, user: str) -> JournalEntry:
     validate(request)
+    ensure_open(session, request.posting_date)  # lock order everywhere: period first, then accounts
     accounts = load_accounts(session, {line.account_number for line in request.lines})
     currencies = {account.currency for account in accounts.values()}
     if len(currencies) > 1:
