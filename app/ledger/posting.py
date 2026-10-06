@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.db.models import Account, EntrySource, EntryStatus, JournalEntry, JournalLine
 from app.ledger.entries import EntryRequest, validate
+from app.events.outbox import record_posted
 from app.ledger.errors import AccountNotFound, EntryNotFound, InsufficientFunds, InvalidEntry
 from app.ledger.periods import ensure_open
 
@@ -57,6 +58,8 @@ def post_entry(
     if not pending:  # a pending entry does not touch balances until it is approved
         movements = [(line.account_number, line.debit, line.credit) for line in request.lines]
         apply_to_balances(movements, accounts)
+        session.flush()
+        record_posted(session, entry)  # same transaction: no posting without its event, and no event without it
     session.flush()
     return entry
 

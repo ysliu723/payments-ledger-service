@@ -3,6 +3,9 @@
     accounts ── journal_lines ── journal_entries
     periods            which months are closed
     idempotency_keys   the first response to each idempotency key
+    outbox             events waiting to be published, written with the entry they describe
+    processed_events   events the statement consumer has already applied (to ignore duplicates)
+    statement_lines    each account's activity, built by the consumer from events
 
 Balances are debit-positive (debits - credits), the same convention as the
 risk platform. The `balance` column on accounts is a running total kept for
@@ -19,6 +22,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Numeric,
     String,
     Text,
@@ -139,3 +143,42 @@ class IdempotencyRecord(Base):
     response_status: Mapped[int | None]
     response_body: Mapped[dict | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class OutboxEvent(Base):
+    """An event to publish. Written in the same transaction as the posting it describes."""
+
+    __tablename__ = "outbox"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    event_id: Mapped[str] = mapped_column(String(36), unique=True)
+    event_type: Mapped[str] = mapped_column(String(64))
+    entry_id: Mapped[int] = mapped_column(BigInteger)
+    payload: Mapped[dict] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# The relay only ever looks for unpublished events; keep that lookup small and fast.
+Index("ix_outbox_unpublished", OutboxEvent.id, postgresql_where=OutboxEvent.published_at.is_(None))
+
+
+class ProcessedEvent(Base):
+    __tablename__ = "processed_events"
+
+    event_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class StatementLine(Base):
+    """One line of an account statement, as the account holder reads it (money in is positive)."""
+
+    __tablename__ = "statement_lines"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    account_number: Mapped[str] = mapped_column(String(32), index=True)
+    entry_id: Mapped[int] = mapped_column(BigInteger)
+    posting_date: Mapped[date]
+    description: Mapped[str] = mapped_column(Text)
+    amount: Mapped[Decimal] = mapped_column(Money)
+    event_id: Mapped[str] = mapped_column(String(36))

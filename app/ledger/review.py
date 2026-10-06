@@ -16,6 +16,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.models import EntrySource, EntryStatus, JournalEntry
+from app.events.outbox import record_posted
 from app.ledger.entries import EntryRequest, LineRequest
 from app.ledger.errors import InvalidState, SegregationOfDuties
 from app.ledger.periods import ensure_open
@@ -40,6 +41,7 @@ def approve_entry(session: Session, entry_id: int, user: str) -> JournalEntry:
     entry.status = str(EntryStatus.POSTED)
     entry.approved_by = user
     entry.approved_at = datetime.now(timezone.utc)
+    record_posted(session, entry)
     session.flush()
     return entry
 

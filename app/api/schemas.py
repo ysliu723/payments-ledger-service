@@ -107,3 +107,10 @@ class CheckOut(BaseModel):
 class ReconciliationOut(BaseModel):
     ok: bool
     checks: list[CheckOut]
+
+
+class StatementLineOut(ApiModel):
+    entry_id: int
+    posting_date: date
+    description: str
+    amount: Decimal  # money in is positive, as the account holder reads it

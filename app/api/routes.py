@@ -6,6 +6,7 @@ this demo has no real authentication.
 
     POST /accounts                      open an account
     GET  /accounts, /accounts/{number}  balances
+    GET  /accounts/{number}/statement   activity built from ledger events (may lag by a moment)
     POST /entries                       post an entry (or create it PENDING if it needs approval)
     GET  /entries/{id}                  an entry with its lines and audit trail
     POST /entries/{id}/approve          approve a pending entry (not by its preparer)
@@ -36,10 +37,11 @@ from app.api.schemas import (
     PeriodOut,
     ReconciliationOut,
     ReverseIn,
+    StatementLineOut,
     TrialBalanceLineOut,
     TrialBalanceOut,
 )
-from app.db.models import Account, JournalEntry, Period
+from app.db.models import Account, JournalEntry, Period, StatementLine
 from app.db.session import get_session
 from app.ledger.accounts import get_account, open_account
 from app.ledger.entries import EntryRequest, LineRequest
@@ -76,6 +78,13 @@ def list_accounts(session: Session = Depends(get_session)):
 @router.get("/accounts/{number}", response_model=AccountOut)
 def read_account(number: str, session: Session = Depends(get_session)):
     return get_account(session, number)
+
+
+@router.get("/accounts/{number}/statement", response_model=list[StatementLineOut])
+def read_statement(number: str, session: Session = Depends(get_session)):
+    get_account(session, number)  # 404 for unknown accounts
+    query = select(StatementLine).where(StatementLine.account_number == number).order_by(StatementLine.id)
+    return list(session.scalars(query))
 
 
 @router.post("/entries", response_model=EntryOut, status_code=status.HTTP_201_CREATED)
