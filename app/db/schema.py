@@ -84,10 +84,18 @@ GUARDS = [
 ]
 
 
+SCHEMA_LOCK = 724_001  # any fixed number, shared by every process that creates the schema
+
+
 def create_schema(engine: Engine) -> None:
-    """Create missing tables, then (re)install the guards. Safe to run more than once."""
-    Base.metadata.create_all(engine)
+    """Create missing tables, then (re)install the guards. Safe to run more than once.
+
+    Several API processes may start at the same moment; an advisory lock lets
+    one of them do this at a time instead of racing on the same DDL.
+    """
     with engine.begin() as connection:
+        connection.exec_driver_sql(f"SELECT pg_advisory_xact_lock({SCHEMA_LOCK})")
+        Base.metadata.create_all(connection)
         # Run through psycopg directly: the "%" in RAISE messages would otherwise
         # be taken for a query parameter placeholder.
         psycopg_connection = connection.connection.driver_connection
