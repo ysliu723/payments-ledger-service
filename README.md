@@ -35,7 +35,9 @@ are made impossible at write time:
 
 What cannot be prevented, because it is only *sometimes* wrong (a late-night entry,
 a round amount), is left to detection. Prevention handles what is always wrong;
-detection handles what is only sometimes wrong.
+detection handles what is only sometimes wrong. A third project, the
+[Audit Evidence Agent](https://github.com/ysliu723/audit-evidence-agent), *verifies*
+flagged entries against invoices and contracts.
 
 ## Results
 
